@@ -30,6 +30,8 @@ const theme = createTheme({
   palette: {
     primary: {
       main: '#2563eb',
+      light: '#60a5fa',
+      dark: '#1d4ed8',
     },
     background: {
       default: '#f8fafc',
@@ -38,8 +40,16 @@ const theme = createTheme({
   },
   typography: {
     fontFamily: '"Inter", "Roboto", "Helvetica", "Arial", sans-serif',
+    h2: {
+      fontWeight: 800,
+      letterSpacing: '-0.03em',
+    },
     h3: {
       fontWeight: 600,
+    },
+    subtitle1: {
+      fontWeight: 500,
+      letterSpacing: '0.02em',
     },
   },
   components: {
@@ -47,14 +57,32 @@ const theme = createTheme({
       styleOverrides: {
         root: {
           textTransform: 'none',
-          borderRadius: '8px',
+          borderRadius: '12px',
+          padding: '10px 24px',
+          fontWeight: 600,
+        },
+        contained: {
+          boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
+          '&:hover': {
+            boxShadow: '0 6px 16px rgba(37, 99, 235, 0.3)',
+          },
         },
       },
     },
     MuiPaper: {
       styleOverrides: {
         root: {
-          borderRadius: '12px',
+          borderRadius: '16px',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+        },
+      },
+    },
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          '& .MuiOutlinedInput-root': {
+            borderRadius: '12px',
+          },
         },
       },
     },
@@ -158,6 +186,45 @@ function App() {
     });
   };
 
+  const togglePlay = async () => {
+    if (!text || words.length === 0) return;
+
+    try {
+      if (isPlaying) {
+        // Pause
+        isPausedRef.current = true;
+        if (speechRef.current) {
+          speechRef.current.cancel();
+        }
+        setIsPlaying(false);
+      } else {
+        // Play
+        isPausedRef.current = false;
+        
+        // If we're paused, continue from current word, otherwise start from beginning
+        const startIndex = currentWordIndex >= 0 ? currentWordIndex : 0;
+        
+        // Set states before starting playback
+        setIsPlaying(true);
+        setCurrentWordIndex(startIndex);
+        currentIndexRef.current = startIndex;
+        
+        // Ensure we're at the start of the text when starting fresh
+        if (startIndex === 0 && textRef.current) {
+          textRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        // Start playback immediately
+        await processWords(startIndex);
+      }
+    } catch (error) {
+      console.error('Error in togglePlay:', error);
+      setIsPlaying(false);
+      setCurrentWordIndex(-1);
+      currentIndexRef.current = -1;
+    }
+  };
+
   const processWords = async (startIndex: number) => {
     if (!isPlaying || isPausedRef.current) return;
 
@@ -185,36 +252,6 @@ function App() {
       }
     } catch (error) {
       console.error('Error in processWords:', error);
-      setIsPlaying(false);
-      setCurrentWordIndex(-1);
-      currentIndexRef.current = -1;
-    }
-  };
-
-  const togglePlay = async () => {
-    if (!text || words.length === 0) return;
-
-    try {
-      if (isPlaying) {
-        // Pause
-        isPausedRef.current = true;
-        if (speechRef.current) {
-          speechRef.current.cancel();
-        }
-        setIsPlaying(false);
-      } else {
-        // Play
-        isPausedRef.current = false;
-        setIsPlaying(true);
-        
-        // Start from current word if exists, otherwise from beginning
-        const startIndex = currentWordIndex >= 0 ? currentWordIndex : 0;
-        currentIndexRef.current = startIndex;
-        setCurrentWordIndex(startIndex);
-        processWords(startIndex);
-      }
-    } catch (error) {
-      console.error('Error in togglePlay:', error);
       setIsPlaying(false);
       setCurrentWordIndex(-1);
       currentIndexRef.current = -1;
@@ -270,6 +307,11 @@ function App() {
       currentIndexRef.current = -1;
       isPausedRef.current = false;
       setIsPlaying(false);
+
+      // Scroll to top when new text is loaded
+      if (textRef.current) {
+        textRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     } catch (error) {
       console.error('Error processing file:', error);
       alert('Error processing file. Please try again.');
@@ -304,16 +346,54 @@ function App() {
           minHeight: '100vh',
           background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
           py: 4,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: '-10%',
+            right: '-10%',
+            width: '40%',
+            height: '40%',
+            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.1) 0%, rgba(37, 99, 235, 0) 70%)',
+            borderRadius: '50%',
+            zIndex: 0,
+          },
+          '&::after': {
+            content: '""',
+            position: 'absolute',
+            bottom: '-10%',
+            left: '-10%',
+            width: '30%',
+            height: '30%',
+            background: 'radial-gradient(circle, rgba(37, 99, 235, 0.08) 0%, rgba(37, 99, 235, 0) 70%)',
+            borderRadius: '50%',
+            zIndex: 0,
+          },
         }}
       >
-        <Container maxWidth="md">
+        <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
           <Stack spacing={4}>
             <Box
               sx={{
                 textAlign: 'center',
                 mb: 2,
+                position: 'relative',
               }}
             >
+              <Box
+                sx={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: 'translate(-50%, -50%)',
+                  width: '200px',
+                  height: '200px',
+                  background: 'radial-gradient(circle, rgba(37, 99, 235, 0.05) 0%, rgba(37, 99, 235, 0) 70%)',
+                  borderRadius: '50%',
+                  zIndex: -1,
+                }}
+              />
               <Typography 
                 variant="h2" 
                 component="h1"
@@ -323,8 +403,9 @@ function App() {
                   WebkitBackgroundClip: 'text',
                   color: 'transparent',
                   fontWeight: 800,
-                  letterSpacing: '-0.02em',
-                  mb: 1,
+                  letterSpacing: '-0.03em',
+                  mb: 2,
+                  fontSize: { xs: '2.5rem', md: '3.5rem' },
                 }}
               >
                 Verbalise
@@ -334,73 +415,94 @@ function App() {
                 color="text.secondary"
                 sx={{ 
                   fontWeight: 500,
-                  letterSpacing: '0.02em',
+                  letterSpacing: '0.01em',
+                  maxWidth: '700px',
+                  mx: 'auto',
+                  fontSize: { xs: '1rem', md: '1.1rem' },
                 }}
               >
-                Transform your documents into natural speech
+                Listen as you write — AI-powered reading that lets you take notes without looking back. Adjust the pace and voice to fit your flow.
               </Typography>
             </Box>
             
             <Paper 
               elevation={0}
               sx={{ 
-                p: 3,
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                p: 4,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '150px',
+                  height: '150px',
+                  background: 'linear-gradient(45deg, rgba(37, 99, 235, 0.05), rgba(37, 99, 235, 0))',
+                  borderRadius: '0 0 0 100%',
+                },
               }}
             >
               <Stack spacing={3}>
-                <TextField
-                  fullWidth
-                  label="Enter PDF URL"
-                  value={url}
-                  onChange={(e) => setUrl(e.target.value)}
-                  variant="outlined"
-                />
-                <Stack direction="row" spacing={2}>
-                  <Button
-                    variant="contained"
-                    onClick={handleUrlSubmit}
-                    startIcon={<Upload />}
-                    size="large"
-                    fullWidth
-                  >
-                    Load from URL
-                  </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Upload sx={{ color: 'primary.main', fontSize: 28 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Import Document</Typography>
+                </Box>
 
-                  <Button
-                    variant="outlined"
-                    component="label"
-                    startIcon={<Upload />}
-                    size="large"
-                    fullWidth
-                  >
-                    Upload File
-                    <input
-                      type="file"
-                      hidden
-                      accept=".pdf,.doc,.docx,.txt"
-                      onChange={handleFileUpload}
-                    />
-                  </Button>
-                </Stack>
+                <Button
+                  variant="outlined"
+                  component="label"
+                  startIcon={<Upload />}
+                  size="large"
+                  fullWidth
+                  sx={{
+                    height: 48,
+                    borderColor: 'rgba(37, 99, 235, 0.2)',
+                    '&:hover': {
+                      borderColor: 'primary.main',
+                      background: 'rgba(37, 99, 235, 0.04)',
+                    },
+                  }}
+                >
+                  Upload File
+                  <input
+                    type="file"
+                    hidden
+                    accept=".pdf,.doc,.docx,.txt"
+                    onChange={handleFileUpload}
+                  />
+                </Button>
               </Stack>
             </Paper>
 
             <Paper 
               elevation={0}
               sx={{ 
-                p: 3,
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                p: 4,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '150px',
+                  height: '150px',
+                  background: 'linear-gradient(45deg, rgba(37, 99, 235, 0.05), rgba(37, 99, 235, 0))',
+                  borderRadius: '0 0 0 100%',
+                },
               }}
             >
               <Stack spacing={3}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <VolumeUp color="primary" />
-                  <Typography>Voice Settings</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <VolumeUp sx={{ color: 'primary.main', fontSize: 28 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Voice Settings</Typography>
                 </Box>
                 
                 <FormControl fullWidth>
@@ -409,18 +511,29 @@ function App() {
                     value={selectedVoice}
                     label="Select Voice"
                     onChange={(e) => setSelectedVoice(e.target.value)}
+                    sx={{
+                      '& .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'rgba(37, 99, 235, 0.2)',
+                      },
+                      '&:hover .MuiOutlinedInput-notchedOutline': {
+                        borderColor: 'primary.main',
+                      },
+                    }}
                   >
                     {voices.map((voice) => (
-                      <MenuItem key={voice.name} value={voice.name}>
+                      <MenuItem 
+                        key={`${voice.name}-${voice.lang}-${voice.voiceURI}`} 
+                        value={voice.name}
+                      >
                         {voice.name} ({voice.lang})
                       </MenuItem>
                     ))}
                   </Select>
                 </FormControl>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Speed color="primary" />
-                  <Typography>Reading Speed</Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                  <Speed sx={{ color: 'primary.main', fontSize: 28 }} />
+                  <Typography variant="h6" sx={{ fontWeight: 600 }}>Reading Speed</Typography>
                 </Box>
                 <Slider
                   value={speed}
@@ -441,14 +554,41 @@ function App() {
                   valueLabelFormat={(value) => `${value}x`}
                   sx={{
                     '& .MuiSlider-thumb': {
-                      width: 16,
-                      height: 16,
+                      width: 20,
+                      height: 20,
+                      boxShadow: '0 2px 8px rgba(37, 99, 235, 0.2)',
+                      '&:hover': {
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                      },
+                    },
+                    '& .MuiSlider-track': {
+                      height: 4,
+                    },
+                    '& .MuiSlider-rail': {
+                      height: 4,
+                      opacity: 0.2,
+                    },
+                    '& .MuiSlider-mark': {
+                      width: 2,
+                      height: 2,
+                      '&.MuiSlider-markActive': {
+                        background: 'primary.main',
+                      },
                     },
                   }}
                 />
                 {speed < 0.4 && (
-                  <Typography variant="caption" color="text.secondary">
-                    Word speed is maintained at 0.4x, with longer pauses between words for better note-taking
+                  <Typography 
+                    variant="caption" 
+                    color="text.secondary"
+                    sx={{ 
+                      display: 'block',
+                      textAlign: 'center',
+                      mt: 1,
+                      fontStyle: 'italic',
+                    }}
+                  >
+                    Word speed is maintained at 0.4x for clarity, with longer pauses between words for better note-taking
                   </Typography>
                 )}
               </Stack>
@@ -457,32 +597,73 @@ function App() {
             <Paper 
               elevation={0}
               sx={{ 
-                p: 3,
-                background: 'rgba(255, 255, 255, 0.8)',
-                backdropFilter: 'blur(10px)',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
+                p: 4,
+                background: 'rgba(255, 255, 255, 0.9)',
+                backdropFilter: 'blur(20px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
                 maxHeight: '400px',
                 overflow: 'auto',
+                position: 'relative',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  bottom: 0,
+                  left: 0,
+                  width: '150px',
+                  height: '150px',
+                  background: 'linear-gradient(225deg, rgba(37, 99, 235, 0.05), rgba(37, 99, 235, 0))',
+                  borderRadius: '100% 0 0 0',
+                },
               }}
             >
+              {!isPlaying && words.length > 0 && (
+                <Box
+                  sx={{
+                    position: 'fixed',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    textAlign: 'center',
+                    zIndex: 1,
+                    pointerEvents: 'none',
+                    color: 'text.secondary',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    padding: '12px 24px',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 12px rgba(0, 0, 0, 0.05)',
+                    backdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(37, 99, 235, 0.1)',
+                    width: 'fit-content',
+                    maxWidth: '90%',
+                  }}
+                >
+                  <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    Click any word once to select the word.
+                  </Typography>
+                  <Typography variant="body1" sx={{ opacity: 0.8 }}>
+                    <b>Click again</b> to start reading from the selected word.
+                  </Typography>
+                </Box>
+              )}
               <Box
                 ref={textRef}
                 sx={{
                   lineHeight: 1.8,
                   fontSize: '1.1rem',
+                  position: 'relative',
                   '& span': {
                     cursor: 'pointer',
                     padding: '0 2px',
                     borderRadius: '4px',
                     transition: 'all 0.2s ease',
                     '&:hover': {
-                      background: 'var(--highlight)',
+                      background: 'rgba(37, 99, 235, 0.1)',
                     },
                   },
                   '& .current-word': {
-                    background: 'var(--highlight)',
-                    color: 'var(--current-word)',
-                    fontWeight: 500,
+                    background: 'rgba(37, 99, 235, 0.15)',
+                    color: 'primary.main',
+                    fontWeight: 600,
                   },
                 }}
               >
@@ -504,13 +685,22 @@ function App() {
                 display: 'flex', 
                 justifyContent: 'center', 
                 gap: 2,
-                position: 'sticky',
-                bottom: 20,
+                position: 'fixed',
+                bottom: 24,
+                left: 0,
+                right: 0,
                 zIndex: 1000,
+                pointerEvents: 'none',
+                '& > *': {
+                  pointerEvents: 'auto',
+                },
+                opacity: isPlaying ? 1 : 0,
+                transform: `translateY(${isPlaying ? '0' : '20px'})`,
+                transition: 'all 0.3s ease',
               }}
             >
               <Tooltip 
-                title={isPlaying ? "Pause" : "Play"}
+                title="Pause"
                 TransitionComponent={Fade}
                 TransitionProps={{ timeout: 200 }}
               >
@@ -519,19 +709,20 @@ function App() {
                   onClick={togglePlay}
                   size="large"
                   sx={{
-                    width: 64,
-                    height: 64,
+                    width: 72,
+                    height: 72,
                     background: 'var(--primary-color)',
                     color: 'white',
                     boxShadow: '0 4px 12px rgba(37, 99, 235, 0.2)',
                     '&:hover': {
                       background: 'var(--primary-hover)',
                       transform: 'translateY(-2px)',
+                      boxShadow: '0 6px 16px rgba(37, 99, 235, 0.3)',
                     },
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  {isPlaying ? <Pause /> : <PlayArrow />}
+                  <Pause sx={{ fontSize: 32 }} />
                 </IconButton>
               </Tooltip>
             </Box>
